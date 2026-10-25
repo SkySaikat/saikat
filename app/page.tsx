@@ -1,33 +1,26 @@
-import Experience from "@/components/experience/Experience";
-import CommandPalette from "@/components/ai/CommandPalette";
-import Hero from "@/components/hero/Hero";
-import Nav from "@/components/sections/Nav";
-import Proof from "@/components/sections/Proof";
-import About from "@/components/sections/About";
-import Arsenal from "@/components/sections/Arsenal";
-import Work from "@/components/sections/Work";
-import AiTwin from "@/components/sections/AiTwin";
-import Testimonials from "@/components/sections/Testimonials";
-import Contact from "@/components/sections/Contact";
-import Footer from "@/components/sections/Footer";
+import Hero from "@/components/home/Hero";
+import Services, { Marquee } from "@/components/home/Services";
+import Work from "@/components/home/Work";
+import { About, Stack, Testimonials } from "@/components/home/About";
+import Faq from "@/components/home/Faq";
+import Contact from "@/components/home/Contact";
+import { homeGraph, JsonLdString } from "@/lib/seo";
 
 export default function Home() {
   return (
     <>
-      <Experience />
-      <Nav />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JsonLdString(homeGraph()) }} />
       <main>
         <Hero />
-        <Proof />
-        <About />
-        <Arsenal />
+        <Marquee />
+        <Services />
         <Work />
-        <AiTwin />
+        <About />
+        <Stack />
         <Testimonials />
+        <Faq />
         <Contact />
       </main>
-      <Footer />
-      <CommandPalette />
     </>
   );
 }

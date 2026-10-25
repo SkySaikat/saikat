@@ -1,5 +1,6 @@
 import { buildSystemPrompt } from "@/lib/ai-context";
-import { clientIp, gemini, MODEL, rateLimit } from "@/lib/gemini";
+import { gemini, MODEL } from "@/lib/gemini";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
@@ -46,7 +47,7 @@ export async function POST(req: Request) {
         try {
           for await (const chunk of stream) {
             // House style: no em dashes, even if the model slips one in.
-            const text = chunk.text?.replace(/\s*—\s*/g, ", ");
+            const text = chunk.text?.replace(/\s*\u2014\s*/g, ", ");
             if (text) controller.enqueue(encoder.encode(text));
           }
         } catch (err) {

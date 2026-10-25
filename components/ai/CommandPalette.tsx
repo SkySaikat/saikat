@@ -3,10 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowRight, Briefcase, CornerDownLeft, Download, Mail, Palette, RotateCcw, Sparkles, User } from "lucide-react";
+import { ArrowRight, Briefcase, CornerDownLeft, Download, HelpCircle, Mail, Sparkles, User } from "lucide-react";
 import { PALETTE_EVENT } from "./palette-bus";
 import { SITE } from "@/lib/content";
-import { DEFAULT_PALETTE, setPalette } from "@/lib/theme";
 
 type Msg = { role: "user" | "assistant"; content: string; error?: boolean };
 
@@ -23,25 +22,13 @@ const ERRORS: Record<string, string> = {
   default: `Something went wrong on my side. Try again, or reach me at ${SITE.email}.`,
 };
 
-export async function generateTheme(prompt: string) {
-  const res = await fetch("/api/theme", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ prompt }),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || "default");
-  setPalette(data);
-  return data as { name: string };
-}
-
 function Answer({ text }: { text: string }) {
   return (
     <div className="space-y-2">
       {text.split(/\n+/).map((line, i) =>
         /^\s*[-*•]\s+/.test(line) ? (
           <p key={i} className="flex gap-2">
-            <span className="text-a2">·</span>
+            <span className="text-accent">·</span>
             <span>{line.replace(/^\s*[-*•]\s+/, "").replace(/\*\*/g, "")}</span>
           </p>
         ) : (
@@ -73,27 +60,6 @@ export default function CommandPalette() {
     const question = q.trim();
     if (!question) return;
     setInput("");
-
-    if (question.startsWith("/theme")) {
-      const prompt = question.replace(/^\/theme\s*/, "");
-      setMessages((m) => [...m, { role: "user", content: question }]);
-      if (!prompt || prompt === "reset") {
-        setPalette(DEFAULT_PALETTE);
-        setMessages((m) => [...m, { role: "assistant", content: "Back to the original Cybernetic Glow palette." }]);
-        return;
-      }
-      setBusy(true);
-      try {
-        const p = await generateTheme(prompt);
-        setMessages((m) => [...m, { role: "assistant", content: `Re-themed the site as "${p.name}". Type /theme reset to go back.` }]);
-      } catch (e) {
-        const code = (e as Error).message;
-        setMessages((m) => [...m, { role: "assistant", content: ERRORS[code] ?? ERRORS.default, error: true }]);
-      } finally {
-        setBusy(false);
-      }
-      return;
-    }
 
     const history: Msg[] = [...messagesRef.current.filter((m) => !m.error), { role: "user", content: question }];
     setMessages([...messagesRef.current, { role: "user", content: question }, { role: "assistant", content: "" }]);
@@ -153,14 +119,14 @@ export default function CommandPalette() {
 
   useEffect(() => {
     if (!open) return;
-    window.__lenis?.stop();
+    document.documentElement.style.overflow = "hidden";
     const id = setTimeout(() => inputRef.current?.focus(), 60);
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
     window.addEventListener("keydown", onKey);
     return () => {
       clearTimeout(id);
       window.removeEventListener("keydown", onKey);
-      window.__lenis?.start();
+      document.documentElement.style.overflow = "";
     };
   }, [open, close]);
 
@@ -172,9 +138,11 @@ export default function CommandPalette() {
     close();
     setTimeout(() => {
       const el = document.querySelector(hash);
-      if (!el) return;
-      if (window.__lenis) window.__lenis.scrollTo(el as HTMLElement, { offset: -16 });
-      else el.scrollIntoView({ behavior: "smooth" });
+      if (!el) {
+        window.location.href = `/${hash}`;
+        return;
+      }
+      el.scrollIntoView({ behavior: "smooth" });
     }, 120);
   };
 
@@ -192,8 +160,7 @@ export default function CommandPalette() {
         a.click();
       },
     },
-    { icon: Palette, label: "Theme the site with AI", run: () => setInput("/theme ") },
-    { icon: RotateCcw, label: "Reset theme", run: () => setPalette(DEFAULT_PALETTE) },
+    { icon: HelpCircle, label: "FAQ", run: () => go("#faq") },
   ];
 
   if (!mounted) return null;
@@ -207,9 +174,7 @@ export default function CommandPalette() {
             role="dialog"
             aria-modal="true"
             aria-label="Ask Saikat's AI twin"
-            data-lenis-prevent
-            className="glass relative flex max-h-[72vh] w-full max-w-[680px] flex-col overflow-hidden"
-            style={{ ["--radius" as string]: "22px", background: "rgba(10,11,16,0.82)" }}
+            className="relative flex max-h-[72vh] w-full max-w-[680px] flex-col overflow-hidden rounded-3xl border border-line bg-surface shadow-2xl shadow-black/70"
             initial={{ opacity: 0, y: -12, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.98 }}
@@ -222,12 +187,12 @@ export default function CommandPalette() {
                 if (!busy) ask(input);
               }}
             >
-              <Sparkles className="size-4 shrink-0 text-a2" />
+              <Sparkles className="size-4 shrink-0 text-accent" />
               <input
                 ref={inputRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask my AI twin anything, or type /theme northern lights"
+                placeholder="Ask my AI twin about skills, projects or availability"
                 className="min-w-0 flex-1 bg-transparent text-[15px] text-ink outline-none placeholder:text-dim"
                 maxLength={600}
                 aria-label="Your question"
@@ -243,7 +208,7 @@ export default function CommandPalette() {
                     <button
                       key={s}
                       onClick={() => ask(s)}
-                      className="group flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-[14px] text-ink/85 hover:bg-white/[0.05]"
+                      className="group flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-[14px] text-ink/85 hover:bg-white/[0.06]"
                     >
                       {s}
                       <ArrowRight className="size-3.5 text-dim opacity-0 transition group-hover:opacity-100" />
@@ -252,7 +217,7 @@ export default function CommandPalette() {
                   <p className="px-3 pb-2 pt-4 font-mono text-[10px] uppercase tracking-[0.18em] text-dim">Go</p>
                   <div className="grid gap-1 sm:grid-cols-2">
                     {actions.map((a) => (
-                      <button key={a.label} onClick={a.run} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[14px] text-muted hover:bg-white/[0.05] hover:text-ink">
+                      <button key={a.label} onClick={a.run} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[14px] text-muted hover:bg-white/[0.06] hover:text-ink">
                         <a.icon className="size-4" />
                         {a.label}
                       </button>
@@ -268,9 +233,9 @@ export default function CommandPalette() {
                       </div>
                     ) : (
                       <div key={i} className="flex gap-3">
-                        <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-gradient-to-br from-a1 to-a2 font-mono text-[10px] font-semibold">SC</span>
-                        <div className={`min-w-0 flex-1 text-[14px] leading-relaxed ${m.error ? "text-amber-200/90" : "text-ink/85"}`}>
-                          {m.content ? <Answer text={m.content} /> : <span className="inline-block h-4 w-2 animate-pulse bg-a2/80" />}
+                        <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-accent font-display text-[12px] font-bold text-accent-ink">S</span>
+                        <div className={`min-w-0 flex-1 text-[14px] leading-relaxed ${m.error ? "text-muted" : "text-ink/85"}`}>
+                          {m.content ? <Answer text={m.content} /> : <span className="inline-block h-4 w-2 animate-pulse bg-accent" />}
                         </div>
                       </div>
                     ),
